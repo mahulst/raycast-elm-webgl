@@ -1,0 +1,106 @@
+[
+  {
+    "name": "Math.Vector3",
+    "comment": "\n@docs Vec3, fromTuple\n",
+    "aliases": [],
+    "types": [
+      {
+        "name": "Vec3",
+        "comment": "\n",
+        "args": [],
+        "cases": [
+          [
+            "Vec3",
+            []
+          ]
+        ]
+      }
+    ],
+    "values": [
+      {
+        "name": "fromTuple",
+        "comment": "\n",
+        "type": "Helpers.Float3 -> Math.Vector3.Vec3"
+      }
+    ],
+    "generated-with-elm-version": "0.17.1"
+  },
+  {
+    "name": "Math.Vector2",
+    "comment": "\n@docs Vec2, fromTuple\n",
+    "aliases": [],
+    "types": [
+      {
+        "name": "Vec2",
+        "comment": "\n",
+        "args": [],
+        "cases": [
+          [
+            "Vec2",
+            []
+          ]
+        ]
+      }
+    ],
+    "values": [
+      {
+        "name": "fromTuple",
+        "comment": "\n",
+        "type": "Helpers.Float2 -> Math.Vector2.Vec2"
+      }
+    ],
+    "generated-with-elm-version": "0.17.1"
+  },
+  {
+    "name": "Math.Vector4",
+    "comment": "\n@docs Vec4, fromTuple\n",
+    "aliases": [],
+    "types": [
+      {
+        "name": "Vec4",
+        "comment": "\n",
+        "args": [],
+        "cases": [
+          [
+            "Vec4",
+            []
+          ]
+        ]
+      }
+    ],
+    "values": [
+      {
+        "name": "fromTuple",
+        "comment": "\n",
+        "type": "Helpers.Float4 -> Math.Vector4.Vec4"
+      }
+    ],
+    "generated-with-elm-version": "0.17.1"
+  },
+  {
+    "name": "Math.Matrix4",
+    "comment": "\n@docs Mat4, fromTuple\n",
+    "aliases": [],
+    "types": [
+      {
+        "name": "Mat4",
+        "comment": " 4x4 matrix type\n",
+        "args": [],
+        "cases": [
+          [
+            "Mat4",
+            []
+          ]
+        ]
+      }
+    ],
+    "values": [
+      {
+        "name": "fromTuple",
+        "comment": "\n",
+        "type": "Helpers.Float4x4 -> Math.Matrix4.Mat4"
+      }
+    ],
+    "generated-with-elm-version": "0.17.1"
+  }
+]
