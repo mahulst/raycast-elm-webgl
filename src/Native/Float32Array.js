@@ -14,7 +14,7 @@ var _zinggi$elm_float32array$Native_Float32Array = function() {
       return new Float32Array([t._0, t._1, t._2, t._3]);
     };
 
-    var fromTuple4x4 = function(m) {
+    var fromTuple4x4 = function(t) {
         return new Float32Array([
             t._0._0, t._1._0, t._2._0, t._3._0,
             t._0._1, t._1._1, t._2._1, t._3._1,
