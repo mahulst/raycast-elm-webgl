@@ -7,11 +7,7 @@
         "src"
     ],
     "exposed-modules": [
-        "WebGLTypes",
-        "Math.Vector2",
-        "Math.Vector3",
-        "Math.Vector4",
-        "Math.Matrix4"
+        "WebGLTypes"
     ],
     "native-modules": true,
     "dependencies": {
