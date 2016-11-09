@@ -24,48 +24,48 @@ import Native.Float32Array
 
 {-| Corresponds to vec2 in GLSL
 -}
-type alias GLVec2 =
+type alias Vec2 =
     V2.Vec2
 
 
 {-| vec3
 -}
-type alias GLVec3 =
+type alias Vec3 =
     V3.Vec3
 
 
 {-| vec4
 -}
-type alias GLVec4 =
+type alias Vec4 =
     V4.Vec4
 
 
 {-| mat4
 -}
-type alias GLMat4 =
+type alias Mat4 =
     M4.Mat4
 
 
 {-| -}
-fromFloat2 : Float2 -> GLVec2
+fromFloat2 : Float2 -> Vec2
 fromFloat2 =
     Native.Float32Array.fromTuple2
 
 
 {-| -}
-fromFloat3 : Float3 -> GLVec3
+fromFloat3 : Float3 -> Vec3
 fromFloat3 =
     Native.Float32Array.fromTuple3
 
 
 {-| -}
-fromFloat4 : Float4 -> GLVec4
+fromFloat4 : Float4 -> Vec4
 fromFloat4 =
     Native.Float32Array.fromTuple4
 
 
 {-| -}
-fromFloat4x4 : Float4x4 -> GLMat4
+fromFloat4x4 : Float4x4 -> Mat4
 fromFloat4x4 =
     Native.Float32Array.fromTuple4x4
 
