@@ -1,7 +1,7 @@
 {
     "version": "1.0.0",
     "summary": "Constructors for the GLSL vec and mat types for use with WebGL",
-    "repository": "https://github.com/zinggi/elm-webgl-types.git",
+    "repository": "https://github.com/Zinggi/elm-webgl-types.git",
     "license": "BSD3",
     "source-directories": [
         "src"

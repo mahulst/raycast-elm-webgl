@@ -5,13 +5,13 @@ The types in this library correspond to a `Float32Array` in JavaScript.
 This library is meant to be used with WebGL.
 
 ## Types
-@docs GLVec2, GLVec3, GLVec4, GLMat4
+@docs Vec2, Vec3, Vec4, Mat4
 
 ## Constructors
 @docs fromFloat2, fromFloat3, fromFloat4, fromFloat4x4
 
 --
-Type aliases for simpler type annotations
+Type aliases to simplify type annotations
 @docs Float2, Float3, Float4, Float4x4
 -}
 
