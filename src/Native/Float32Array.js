@@ -3,7 +3,7 @@
  *
  * Elm interop to Float32Array for webgl.
  */
-var _Zinggi$elm_webgl_math$Native_Float32Array = function() {
+var _Zinggi$elm_webgl_types$Native_Float32Array = function() {
     var fromTuple2 = function(t) {
       return new Float32Array([t._0, t._1]);
     };
