@@ -1,2 +1,4 @@
-elm-stuff/
-documentation.json
+.idea
+elm-stuff
+examples/elm-stuff
+
