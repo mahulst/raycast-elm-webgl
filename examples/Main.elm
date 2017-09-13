@@ -187,27 +187,24 @@ getClickPosition model pos =
         inversedProjectionMatrix =
             Maybe.withDefault Mat4.identity (Mat4.inverse perspective)
 
-        test = mulVector inversedProjectionMatrix homogeneousClipCoordinates
+        vec4CameraCoordinates = mulVector inversedProjectionMatrix homogeneousClipCoordinates
 
-        test2 = Vec4.vec4 (Vec4.getX test) (Vec4.getY test) -1 0
+        direction = Vec4.vec4 (Vec4.getX vec4CameraCoordinates) (Vec4.getY vec4CameraCoordinates) -1 0
 
-        test25 = mulVector inversedViewMatrix test2
+        vec4WorldCoordinates = mulVector inversedViewMatrix direction
 
-        test3 = vec3 (Vec4.getX test25) (Vec4.getY test25) (Vec4.getZ test25)
+        vec3WorldCoordinates = vec3 (Vec4.getX vec4WorldCoordinates) (Vec4.getY vec4WorldCoordinates) (Vec4.getZ vec4WorldCoordinates)
 
-        test4 = Vec3.normalize test3
+        normalizedVec3WorldCoordinates = Vec3.normalize vec3WorldCoordinates
 
-        test5 = model.cameraPos
+        origin = model.cameraPos
 
-        test6 = multi test4 20
+        scaledDirection = Vec3.scale  20 normalizedVec3WorldCoordinates
 
-        test7 = Vec3.add test5 test6
+        destination = Vec3.add origin scaledDirection
 
-
-        toVec3 =
-            test7
     in
-        toVec3
+        destination
 
 
 mulVector : Mat4 -> Vec4.Vec4 -> Vec4.Vec4
