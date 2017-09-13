@@ -1,18 +1,11 @@
 module Main exposing (main)
 
-{-
-   Rotating cube with colored sides.
--}
-
-import AnimationFrame
 import Color exposing (Color)
 import Html exposing (Html)
-import WebGLTypes as GL exposing (fromFloat3, fromFloat4x4)
-import Vector3 as V3 exposing (Vec3, Float3)
-import Vector4 as V4 exposing (Float4)
 import Html.Attributes exposing (width, height, style)
-import Matrix4 exposing (Mat4, Float4x4)
-import Time exposing (Time)
+import Math.Matrix4 as Mat4 exposing (Mat4)
+import Math.Vector3 as Vec3 exposing (vec3, Vec3, toTuple)
+import Math.Vector4 as Vec4
 import WebGL exposing (Mesh, Shader)
 import Mouse exposing (..)
 import Keyboard exposing (..)
@@ -30,9 +23,23 @@ main =
 
 
 type alias Model =
-    { cameraPos : Float3
-    , cameraAngle: Float
-    , rays : List ( GL.Vec3, GL.Vec3 )
+    { cameraPos : Vec3
+    , cameraAngle : Float
+    , rays : List ( Vec3, Vec3 )
+    }
+
+
+type alias Vertex =
+    { color : Vec3
+    , position : Vec3
+    }
+
+
+type alias Uniforms =
+    { rotation : Mat4
+    , perspective : Mat4
+    , camera : Mat4
+    , shade : Float
     }
 
 
@@ -43,29 +50,45 @@ type Msg
 
 init : ( Model, Cmd Msg )
 init =
-    ( Model ( 3, 3, 3 ) 0 [], Cmd.none )
+    ( Model (getCameraPosFromAngle 0 3) 0 [], Cmd.none )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         KeyMsg code ->
-            let
-                angle =
+            case code of
+                -- Right
+                37 ->
+                    let
+                        angle =
+                            model.cameraAngle + 0.2
 
+                        cameraPos =
+                            getCameraPosFromAngle angle (Vec3.getY model.cameraPos)
+                    in
+                        ( { model | cameraPos = cameraPos, cameraAngle = angle }, Cmd.none )
 
-                cameraPos =
-                    getCameraPosFromAngle angle (V3.getY model.cameraPos)
-            in
-                ( { model | cameraPos = cameraPos }, Cmd.none )
+                39 ->
+                    let
+                        angle =
+                            model.cameraAngle - 0.2
+
+                        cameraPos =
+                            getCameraPosFromAngle angle (Vec3.getY model.cameraPos)
+                    in
+                        ( { model | cameraPos = cameraPos, cameraAngle = angle }, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
 
         MouseClick pos ->
             let
                 destination =
-                    fromFloat3 (getClickPosition model pos)
+                    getClickPosition model pos
 
                 origin =
-                    fromFloat3 model.cameraPos
+                    model.cameraPos
 
                 newRays =
                     model.rays ++ [ ( origin, destination ) ]
@@ -73,7 +96,7 @@ update msg model =
                 ( { model | rays = newRays }, Cmd.none )
 
 
-getCameraPosFromAngle : Float -> Float -> Float3
+getCameraPosFromAngle : Float -> Float -> Vec3
 getCameraPosFromAngle angle heightOfCamera =
     let
         cosine =
@@ -91,7 +114,7 @@ getCameraPosFromAngle angle heightOfCamera =
         opposite =
             sinus * hypotenuse
     in
-        ( adjacent, heightOfCamera, opposite )
+        vec3 adjacent heightOfCamera opposite
 
 
 angleOfCamera : Mouse.Position -> Float
@@ -103,7 +126,8 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ Keyboard.downs KeyMsg
-        , Mouse.clicks MouseClick ]
+        , Mouse.clicks MouseClick
+        ]
 
 
 view : Model -> Html Msg
@@ -122,69 +146,104 @@ view model =
             vertexShader
             fragmentShader
             floor
-            (uniforms2 model)
+            (uniforms model)
         , WebGL.entity
             vertexShader
             fragmentShader
             (lines model)
-            (uniforms2 model)
+            (uniforms model)
         ]
 
-
-type alias Position =
-    { x : Float
-    , y : Float
-    }
-
-
-undefined : () -> a
-undefined _ =
-    Debug.crash "Undefined!"
+multi : Vec3 -> Float -> Vec3
+multi v1 f =
+  vec3
+    ((Vec3.getX v1) * f)
+    ((Vec3.getY v1) * f)
+    ((Vec3.getZ v1) * f)
 
 
-
-getClickPosition : Model -> Mouse.Position -> Float3
+getClickPosition : Model -> Mouse.Position -> Vec3
 getClickPosition model pos =
     let
-        x = toFloat pos.x
-        y = toFloat pos.y
+        x =
+            toFloat pos.x
+
+        y =
+            toFloat pos.y
 
         normalizedPosition =
-            ( (x * 2) / 1000 - 1,  (1 - (2 * y) / 1000))
+            ( (x * 2) / 1000 - 1, (1 - y / 1000 * 2) )
 
         homogeneousClipCoordinates =
-            ((Tuple.first normalizedPosition)
-            ,(Tuple.second normalizedPosition)
-            , -1
-            , 1
-            )
+            Vec4.vec4
+                (Tuple.first normalizedPosition)
+                (Tuple.second normalizedPosition)
+                -1
+                1
+
+        inversedViewMatrix =
+            Maybe.withDefault Mat4.identity (Mat4.inverse (camera model))
 
         inversedProjectionMatrix =
-            Matrix4.transpose (camera model)
+            Maybe.withDefault Mat4.identity (Mat4.inverse perspective)
 
-        vec4AppliedInversedProjectionMatrix =
-            Matrix4.mulVector inversedProjectionMatrix homogeneousClipCoordinates
+        test = mulVector inversedProjectionMatrix homogeneousClipCoordinates
 
+        test2 = Vec4.vec4 (Vec4.getX test) (Vec4.getY test) -1 0
 
-        vec4Ray =
-              ( (V4.getX vec4AppliedInversedProjectionMatrix)
-              , (V4.getY vec4AppliedInversedProjectionMatrix)
-              , -1.0
-              , 0.0
-              )
+        test25 = mulVector inversedViewMatrix test2
 
-        vec3NormalizedRay =
-            V3.normalize ((V4.getX vec4Ray), (V4.getY vec4Ray), (V4.getZ vec4Ray))
+        test3 = vec3 (Vec4.getX test25) (Vec4.getY test25) (Vec4.getZ test25)
+
+        test4 = Vec3.normalize test3
+
+        test5 = model.cameraPos
+
+        test6 = multi test4 20
+
+        test7 = Vec3.add test5 test6
+
 
         toVec3 =
-            vec3NormalizedRay
+            test7
     in
         toVec3
 
 
-createLineFromVec3 : ( GL.Vec3, GL.Vec3 ) -> ( Vertex, Vertex )
+mulVector : Mat4 -> Vec4.Vec4 -> Vec4.Vec4
+mulVector mat v =
+    let
+        rec =
+            Mat4.toRecord mat
+
+        r1 =
+            Vec4.vec4 rec.m11 rec.m12 rec.m13 rec.m14
+
+        r2 =
+            Vec4.vec4 rec.m21 rec.m22 rec.m23 rec.m24
+
+        r3 =
+            Vec4.vec4 rec.m31 rec.m32 rec.m33 rec.m34
+
+        r4 =
+            Vec4.vec4 rec.m41 rec.m42 rec.m43 rec.m44
+    in
+        Vec4.vec4 (Vec4.dot r1 v) (Vec4.dot r2 v) (Vec4.dot r3 v) (Vec4.dot r4 v)
+
+
+createLineFromVec3 : ( Vec3, Vec3 ) -> List ( Vertex, Vertex )
 createLineFromVec3 ( a, b ) =
-    ( Vertex (fromFloat3 ( 0, 0, 0 )) a, Vertex (fromFloat3 ( 0, 0, 0 )) b )
+    let
+        a1 =
+            Vertex (vec3 0 0 0) a
+
+        a2 =
+            Vertex (vec3 0 0 0) b
+
+        a3 =
+            Vertex (vec3 0 0 0) (vec3 0 0 0)
+    in
+        [ ( a1, a2 ) ]
 
 
 lines : Model -> Mesh Vertex
@@ -192,44 +251,28 @@ lines model =
     let
         rays =
             List.map createLineFromVec3 model.rays
+
+        flattenedRays =
+            List.concat rays
     in
-        WebGL.lines rays
+        WebGL.lines flattenedRays
 
 
-type alias Uniforms =
-    { rotation : GL.Mat4
-    , perspective : GL.Mat4
-    , camera : GL.Mat4
-    , shade : Float
-    }
-
-
-perspective : Float4x4
+perspective : Mat4
 perspective =
-    Matrix4.makePerspective 45 1 0.01 100
+    Mat4.makePerspective 45 1 0.01 50
 
 
-camera : Model -> Float4x4
+camera : Model -> Mat4
 camera model =
-    Matrix4.makeLookAt model.cameraPos ( 0, 0, 0 ) ( 0, 1, 0 )
+    Mat4.makeLookAt model.cameraPos (vec3 0 0 0) (vec3 0 1 0)
 
 
 uniforms : Model -> Uniforms
 uniforms model =
-    { rotation =
-        (fromFloat4x4 Matrix4.identity)
-    , perspective = (fromFloat4x4 perspective)
-    , camera = (fromFloat4x4 (camera model))
-    , shade = 0.8
-    }
-
-
-uniforms2 : Model -> Uniforms
-uniforms2 model =
-    { rotation =
-        (fromFloat4x4 Matrix4.identity)
-    , perspective = (fromFloat4x4 perspective)
-    , camera = (fromFloat4x4 (camera model))
+    { rotation = Mat4.identity
+    , perspective = perspective
+    , camera = camera model
     , shade = 0.8
     }
 
@@ -237,13 +280,9 @@ uniforms2 model =
 floor : Mesh Vertex
 floor =
     WebGL.lines
-        [ ( Vertex (fromFloat3 ( 1, 0, 0 )) (fromFloat3 ( 0, -1, 1 )), Vertex (fromFloat3 ( 1, 0, 0 )) (fromFloat3 ( 0, -1, -1 )) )
-        , ( Vertex (fromFloat3 ( 0, 1, 0 )) (fromFloat3 ( -1, -1, 0 )), Vertex (fromFloat3 ( 0, 1, 0 )) (fromFloat3 ( 1, -1, 0 )) )
-        , ( Vertex (fromFloat3 ( 0, 0, 1 )) (fromFloat3 ( 0, -1, 0 )), Vertex (fromFloat3 ( 0, 0, 1 )) (fromFloat3 ( 0, 1, 0 )) )
-
-        --        ,  ( Vertex (fromFloat3 (0, 1, 0)) (fromFloat3 (0, 1, 0)), Vertex (fromFloat3 (0, 1, 0)) (fromFloat3 (0, -1, 0)))
-        --        , ( Vertex (fromFloat3 (0, 0, 1)) (fromFloat3 (-1, -1, 1)), Vertex (fromFloat3 (0, 0, 1)) (fromFloat3 (-1, -1, -1)))
-        --        , ( Vertex (fromFloat3 (1, 0, 0)) (fromFloat3 (0, 0, 0)), Vertex (fromFloat3 (1, 0, 0)) (fromFloat3 (0, 0, 0)))
+        [ ( Vertex (vec3 1 0 0) (vec3 0 -1 1), Vertex (vec3 1 0 0) (vec3 0 -1 -1) )
+        , ( Vertex (vec3 0 1 0) (vec3 -1 -1 0), Vertex (vec3 0 1 0) (vec3 1 -1 0) )
+        , ( Vertex (vec3 0 0 1) (vec3 0 -1 0), Vertex (vec3 0 0 1) (vec3 0 1 0) )
         ]
 
 
@@ -251,38 +290,32 @@ floor =
 -- Mesh
 
 
-type alias Vertex =
-    { color : GL.Vec3
-    , position : GL.Vec3
-    }
-
-
 cubeMesh : Mesh Vertex
 cubeMesh =
     let
         rft =
-            fromFloat3 ( 0.5, 0.5, 0.5 )
+            vec3 0.5 0.5 0.5
 
         lft =
-            fromFloat3 ( -0.5, 0.5, 0.5 )
+            vec3 -0.5 0.5 0.5
 
         lbt =
-            fromFloat3 ( -0.5, -0.5, 0.5 )
+            vec3 -0.5 -0.5 0.5
 
         rbt =
-            fromFloat3 ( 0.5, -0.5, 0.5 )
+            vec3 0.5 -0.5 0.5
 
         rbb =
-            fromFloat3 ( 0.5, -0.5, -0.5 )
+            vec3 0.5 -0.5 -0.5
 
         rfb =
-            fromFloat3 ( 0.5, 0.5, -0.5 )
+            vec3 0.5 0.5 -0.5
 
         lfb =
-            fromFloat3 ( -0.5, 0.5, -0.5 )
+            vec3 -0.5 0.5 -0.5
 
         lbb =
-            fromFloat3 ( -0.5, -0.5, -0.5 )
+            vec3 -0.5 -0.5 -0.5
     in
         [ face Color.green rft rfb rbb rbt
         , face Color.blue rft rfb lfb lft
@@ -295,7 +328,7 @@ cubeMesh =
             |> WebGL.triangles
 
 
-face : Color -> GL.Vec3 -> GL.Vec3 -> GL.Vec3 -> GL.Vec3 -> List ( Vertex, Vertex, Vertex )
+face : Color -> Vec3 -> Vec3 -> Vec3 -> Vec3 -> List ( Vertex, Vertex, Vertex )
 face rawColor a b c d =
     let
         color =
@@ -303,11 +336,10 @@ face rawColor a b c d =
                 c =
                     Color.toRgb rawColor
             in
-                fromFloat3
-                    ( (toFloat c.red / 255)
-                    , (toFloat c.green / 255)
-                    , (toFloat c.blue / 255)
-                    )
+                vec3
+                    (toFloat c.red / 255)
+                    (toFloat c.green / 255)
+                    (toFloat c.blue / 255)
 
         vertex position =
             Vertex color position
@@ -321,7 +353,7 @@ face rawColor a b c d =
 -- Shaders
 
 
-vertexShader : Shader Vertex Uniforms { vcolor : GL.Vec3 }
+vertexShader : Shader Vertex Uniforms { vcolor : Vec3 }
 vertexShader =
     [glsl|
 
@@ -339,7 +371,7 @@ vertexShader =
     |]
 
 
-fragmentShader : Shader {} Uniforms { vcolor : GL.Vec3 }
+fragmentShader : Shader {} Uniforms { vcolor : Vec3 }
 fragmentShader =
     [glsl|
 
