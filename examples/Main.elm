@@ -1,4 +1,4 @@
-module Main exposing (main)
+module Main exposing (main, rayTriangleIntersect)
 
 import Color exposing (Color)
 import Html exposing (Html)
@@ -11,6 +11,9 @@ import Mouse exposing (..)
 import Keyboard exposing (..)
 import Debug
 
+rayTriangleIntersect : Vec3 -> Vec3 -> (Vec3, Vec3, Vec3) -> Bool
+rayTriangleIntersect rayOrigin rayDirection triangle =
+  True
 
 main : Program Never Model Msg
 main =
@@ -182,10 +185,10 @@ getClickPosition model pos =
                 1
 
         inversedViewMatrix =
-            Maybe.withDefault Mat4.identity (Mat4.inverse (camera model))
+            (Mat4.inverseOrthonormal (camera model))
 
         inversedProjectionMatrix =
-            Maybe.withDefault Mat4.identity (Mat4.inverse perspective)
+            (Mat4.inverseOrthonormal perspective)
 
         vec4CameraCoordinates = mulVector inversedProjectionMatrix homogeneousClipCoordinates
 
