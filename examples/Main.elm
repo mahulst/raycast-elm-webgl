@@ -11,9 +11,63 @@ import Mouse exposing (..)
 import Keyboard exposing (..)
 import Debug
 
-rayTriangleIntersect : Vec3 -> Vec3 -> (Vec3, Vec3, Vec3) -> Bool
-rayTriangleIntersect rayOrigin rayDirection triangle =
-  True
+
+rayTriangleIntersect : Vec3 -> Vec3 -> ( Vec3, Vec3, Vec3 ) -> Maybe Vec3
+rayTriangleIntersect rayOrigin rayDirection ( triangle0, triangle1, triangle2 ) =
+    let
+        epsilon =
+            0.000001
+
+        edge1 =
+            Vec3.sub triangle1 triangle0
+
+        edge2 =
+            Vec3.sub triangle2 triangle0
+
+        pvec =
+            Vec3.cross rayDirection edge2
+
+        det =
+            Vec3.dot edge1 pvec
+    in
+        if det < epsilon then
+            Nothing
+        else
+            let
+                tvec =
+                    Vec3.sub rayOrigin triangle0
+
+                u =
+                    Vec3.dot tvec pvec
+            in
+                if u < 0 || u > det then
+                    Nothing
+                else
+                    let
+                        qvec =
+                            Vec3.cross tvec edge1
+
+                        v =
+                            Vec3.dot rayDirection qvec
+                    in
+                        if v < 0 || u + v > det then
+                            Nothing
+                        else
+                            let
+                                t =
+                                    (Vec3.dot edge2 qvec) / det
+
+                                v0 =
+                                    (Vec3.getX rayOrigin) + t * (Vec3.getX rayDirection)
+
+                                v1 =
+                                    (Vec3.getY rayOrigin) + t * (Vec3.getY rayDirection)
+
+                                v2 =
+                                    (Vec3.getZ rayOrigin) + t * (Vec3.getZ rayDirection)
+                            in
+                                Just (vec3 v0 v1 v2)
+
 
 main : Program Never Model Msg
 main =
@@ -28,7 +82,7 @@ main =
 type alias Model =
     { cameraPos : Vec3
     , cameraAngle : Float
-    , rays : List ( Vec3, Vec3 )
+    , rays : List ( Vec3, Vec3, Vec3 )
     }
 
 
@@ -39,8 +93,7 @@ type alias Vertex =
 
 
 type alias Uniforms =
-    { rotation : Mat4
-    , perspective : Mat4
+    { perspective : Mat4
     , camera : Mat4
     , shade : Float
     }
@@ -90,13 +143,68 @@ update msg model =
                 destination =
                     getClickPosition model pos
 
+                direction =
+                    Vec3.direction destination origin
+
                 origin =
                     model.cameraPos
 
+                triangleList =
+                    List.map (\( v0, v1, v2 ) -> ( v0.position, v1.position, v2.position )) testTriangle
+
+                cam =
+                    camera model
+
+                transformer =
+                    transformVec3 cam perspective
+
+                transformedList =
+                    triangleList
+
+                --                    List.map (\( v0, v1, v2 ) -> ( (transformer v0), (transformer v1), (transformer v2) )) triangleList
+                isClicked =
+                    Debug.log ((toString origin) ++ "\n " ++ (toString direction) ++ "\n" ++ (toString transformedList) ++ "\n\n\n") (isCubeClicked origin direction transformedList)
+
+                color =
+                    if isClicked then
+                        vec3 0 1 0
+                    else
+                        vec3 1 0 0
+
                 newRays =
-                    model.rays ++ [ ( origin, destination ) ]
+                    model.rays ++ [ ( origin, destination, color ) ]
             in
                 ( { model | rays = newRays }, Cmd.none )
+
+
+isCubeClicked : Vec3 -> Vec3 -> List ( Vec3, Vec3, Vec3 ) -> Bool
+isCubeClicked origin destination list =
+    let
+        intersect =
+            rayTriangleIntersect origin destination
+    in
+        List.any
+            (\triangle ->
+                intersect triangle
+                    |> (\m ->
+                            case m of
+                                Nothing ->
+                                    False
+
+                                Just _ ->
+                                    True
+                       )
+            )
+            list
+
+
+transformVec3 : Mat4 -> Mat4 -> Vec3 -> Vec3
+transformVec3 cam per v =
+    let
+        camTransformed =
+            Mat4.transform cam v
+    in
+        Mat4.transform perspective camTransformed
 
 
 getCameraPosFromAngle : Float -> Float -> Vec3
@@ -143,7 +251,9 @@ view model =
         [ WebGL.entity
             vertexShader
             fragmentShader
-            cubeMesh
+            (testTriangle
+                |> WebGL.triangles
+            )
             (uniforms model)
         , WebGL.entity
             vertexShader
@@ -157,16 +267,9 @@ view model =
             (uniforms model)
         ]
 
-multi : Vec3 -> Float -> Vec3
-multi v1 f =
-  vec3
-    ((Vec3.getX v1) * f)
-    ((Vec3.getY v1) * f)
-    ((Vec3.getZ v1) * f)
 
-
-getClickPosition : Model -> Mouse.Position -> Vec3
-getClickPosition model pos =
+getClickDirection : Model -> Mouse.Position -> Vec3
+getClickDirection model pos =
     let
         x =
             toFloat pos.x
@@ -185,27 +288,40 @@ getClickPosition model pos =
                 1
 
         inversedViewMatrix =
-            (Mat4.inverseOrthonormal (camera model))
+            Mat4.inverseOrthonormal (camera model)
 
         inversedProjectionMatrix =
-            (Mat4.inverseOrthonormal perspective)
+            Maybe.withDefault Mat4.identity (Mat4.inverse perspective)
 
-        vec4CameraCoordinates = mulVector inversedProjectionMatrix homogeneousClipCoordinates
+        vec4CameraCoordinates =
+            mulVector inversedProjectionMatrix homogeneousClipCoordinates
 
-        direction = Vec4.vec4 (Vec4.getX vec4CameraCoordinates) (Vec4.getY vec4CameraCoordinates) -1 0
+        direction =
+            Vec4.vec4 (Vec4.getX vec4CameraCoordinates) (Vec4.getY vec4CameraCoordinates) -1 0
 
-        vec4WorldCoordinates = mulVector inversedViewMatrix direction
+        vec4WorldCoordinates =
+            mulVector inversedViewMatrix direction
 
-        vec3WorldCoordinates = vec3 (Vec4.getX vec4WorldCoordinates) (Vec4.getY vec4WorldCoordinates) (Vec4.getZ vec4WorldCoordinates)
+        vec3WorldCoordinates =
+            vec3 (Vec4.getX vec4WorldCoordinates) (Vec4.getY vec4WorldCoordinates) (Vec4.getZ vec4WorldCoordinates)
+    in
+        Vec3.normalize vec3WorldCoordinates
 
-        normalizedVec3WorldCoordinates = Vec3.normalize vec3WorldCoordinates
 
-        origin = model.cameraPos
+getClickPosition : Model -> Mouse.Position -> Vec3
+getClickPosition model pos =
+    let
+        normalizedVec3WorldCoordinates =
+            getClickDirection model pos
 
-        scaledDirection = Vec3.scale  20 normalizedVec3WorldCoordinates
+        origin =
+            model.cameraPos
 
-        destination = Vec3.add origin scaledDirection
+        scaledDirection =
+            Vec3.scale 20 normalizedVec3WorldCoordinates
 
+        destination =
+            Vec3.add origin scaledDirection
     in
         destination
 
@@ -231,17 +347,17 @@ mulVector mat v =
         Vec4.vec4 (Vec4.dot r1 v) (Vec4.dot r2 v) (Vec4.dot r3 v) (Vec4.dot r4 v)
 
 
-createLineFromVec3 : ( Vec3, Vec3 ) -> List ( Vertex, Vertex )
-createLineFromVec3 ( a, b ) =
+createLineFromVec3 : ( Vec3, Vec3, Vec3 ) -> List ( Vertex, Vertex )
+createLineFromVec3 ( a, b, c ) =
     let
         a1 =
-            Vertex (vec3 0 0 0) a
+            Vertex c a
 
         a2 =
-            Vertex (vec3 0 0 0) b
+            Vertex c b
 
         a3 =
-            Vertex (vec3 0 0 0) (vec3 0 0 0)
+            Vertex c (vec3 0 0 0)
     in
         [ ( a1, a2 ) ]
 
@@ -270,8 +386,7 @@ camera model =
 
 uniforms : Model -> Uniforms
 uniforms model =
-    { rotation = Mat4.identity
-    , perspective = perspective
+    { perspective = perspective
     , camera = camera model
     , shade = 0.8
     }
@@ -280,10 +395,28 @@ uniforms model =
 floor : Mesh Vertex
 floor =
     WebGL.lines
-        [ ( Vertex (vec3 1 0 0) (vec3 0 -1 1), Vertex (vec3 1 0 0) (vec3 0 -1 -1) )
-        , ( Vertex (vec3 0 1 0) (vec3 -1 -1 0), Vertex (vec3 0 1 0) (vec3 1 -1 0) )
+        [ ( Vertex (vec3 0 1 0) (vec3 -1 -1 0), Vertex (vec3 0 1 0) (vec3 1 -1 0) )
         , ( Vertex (vec3 0 0 1) (vec3 0 -1 0), Vertex (vec3 0 0 1) (vec3 0 1 0) )
+        , ( Vertex (vec3 1 0 0) (vec3 0 -1 1), Vertex (vec3 1 0 0) (vec3 0 -1 -1) )
         ]
+
+
+testTriangle : List ( Vertex, Vertex, Vertex )
+testTriangle =
+    let
+        color =
+            vec3 0.5 0 0
+
+        x =
+            vec3 0 -1 0
+
+        y =
+            vec3 0 0 -1
+
+        z =
+            vec3 0 1 0
+    in
+        [ ( (Vertex color x), (Vertex color y), (Vertex color z) ) ]
 
 
 
@@ -292,6 +425,12 @@ floor =
 
 cubeMesh : Mesh Vertex
 cubeMesh =
+    cubeTriangles
+        |> WebGL.triangles
+
+
+cubeTriangles : List ( Vertex, Vertex, Vertex )
+cubeTriangles =
     let
         rft =
             vec3 0.5 0.5 0.5
@@ -325,7 +464,6 @@ cubeMesh =
         , face Color.orange rbt rbb lbb lbt
         ]
             |> List.concat
-            |> WebGL.triangles
 
 
 face : Color -> Vec3 -> Vec3 -> Vec3 -> Vec3 -> List ( Vertex, Vertex, Vertex )
@@ -361,10 +499,9 @@ vertexShader =
         attribute vec3 color;
         uniform mat4 perspective;
         uniform mat4 camera;
-        uniform mat4 rotation;
         varying vec3 vcolor;
         void main () {
-            gl_Position = perspective * camera * rotation * vec4(position, 1.0);
+            gl_Position = perspective * camera * vec4(position, 1.0);
             vcolor = color;
         }
 
