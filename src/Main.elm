@@ -324,27 +324,6 @@ rayTriangleIntersect rayOrigin rayDirection ( triangle0, triangle1, triangle2 ) 
                                 Just (vec3 v0 v1 v2)
 
 
-getCameraPosFromAngle : Float -> Float -> Vec3
-getCameraPosFromAngle angle heightOfCamera =
-    let
-        cosine =
-            cos angle
-
-        sinus =
-            sin angle
-
-        hypotenuse =
-            8
-
-        adjacent =
-            cosine * hypotenuse
-
-        opposite =
-            sinus * hypotenuse
-    in
-        vec3 adjacent heightOfCamera opposite
-
-
 getClickPosition : Model -> Mouse.Position -> Vec3
 getClickPosition model pos =
     let
