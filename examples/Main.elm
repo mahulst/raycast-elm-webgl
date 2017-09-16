@@ -26,7 +26,6 @@ main =
 
 type alias Model =
     { cameraPos : Vec3
-    , cameraAngle : Float
     , cubeSelected : Bool
     , theta : Float
     }
@@ -47,45 +46,18 @@ type alias Uniforms =
 
 
 type Msg
-    = KeyMsg Keyboard.KeyCode
-    | MouseClick Mouse.Position
+    = MouseClick Mouse.Position
     | DeltaTime Time
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( Model (getCameraPosFromAngle 0 3) 0 False 0, Cmd.none )
+    ( Model (vec3 0 0 5) False 0, Cmd.none )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        KeyMsg code ->
-            case code of
-                -- Right
-                37 ->
-                    let
-                        angle =
-                            model.cameraAngle + 0.2
-
-                        cameraPos =
-                            getCameraPosFromAngle angle (Vec3.getY model.cameraPos)
-                    in
-                        ( { model | cameraPos = cameraPos, cameraAngle = angle }, Cmd.none )
-
-                39 ->
-                    let
-                        angle =
-                            model.cameraAngle - 0.2
-
-                        cameraPos =
-                            getCameraPosFromAngle angle (Vec3.getY model.cameraPos)
-                    in
-                        ( { model | cameraPos = cameraPos, cameraAngle = angle }, Cmd.none )
-
-                _ ->
-                    ( model, Cmd.none )
-
         MouseClick pos ->
             let
                 origin =
@@ -97,8 +69,11 @@ update msg model =
                 direction =
                     Vec3.direction destination origin
 
+                rotation =
+                    (uniforms model).rotation
+
                 triangleList =
-                    List.map (\( v0, v1, v2 ) -> ( v0.position, v1.position, v2.position )) cubeTriangles
+                    List.map (\( v0, v1, v2 ) -> ( (Mat4.transform rotation v0.position), (Mat4.transform rotation v1.position), (Mat4.transform rotation v2.position) )) cubeTriangles
 
                 cam =
                     camera model
@@ -119,8 +94,7 @@ update msg model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ Keyboard.downs KeyMsg
-        , Mouse.clicks MouseClick
+        [ Mouse.clicks MouseClick
         , AnimationFrame.diffs DeltaTime
         ]
 
@@ -154,8 +128,8 @@ uniforms : Model -> Uniforms
 uniforms model =
     { rotation =
         Mat4.mul
-            (Mat4.makeRotate (3 * 40) (vec3 0 1 0))
-            (Mat4.makeRotate (2 * 40) (vec3 1 0 0))
+            (Mat4.makeRotate (3 * model.theta) (vec3 0 1 0))
+            (Mat4.makeRotate (2 * model.theta) (vec3 1 0 0))
     , perspective = perspective
     , camera = camera model
     , shade =
@@ -204,12 +178,11 @@ cubeTriangles =
             vec3 -0.5 -0.5 -0.5
     in
         [ face Color.green rbb rfb rft rbt
-
-        --        , face Color.blue rft rfb lfb lft
-        --        , face Color.yellow rft lft lbt rbt
-        --        , face Color.red lbb lfb rfb rbb
-        --        , face Color.purple lft lfb lbb lbt
-        --        , face Color.orange rbt rbb lbb lbt
+        , face Color.blue rft rfb lfb lft
+        , face Color.yellow rft lft lbt rbt
+        , face Color.red lbb lfb rfb rbb
+        , face Color.purple lft lfb lbb lbt
+        , face Color.orange lbb rbb rbt lbt
         ]
             |> List.concat
 
