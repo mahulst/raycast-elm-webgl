@@ -9,8 +9,6 @@ import Math.Vector3 as Vec3 exposing (vec3, Vec3, toTuple)
 import Math.Vector4 as Vec4
 import WebGL exposing (Mesh, Shader)
 import Mouse exposing (..)
-import Keyboard exposing (..)
-import Debug
 import Time exposing (Time)
 
 
